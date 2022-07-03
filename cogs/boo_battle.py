@@ -5,6 +5,7 @@ import csv
 import random
 
 from utils import repo
+from utils import stats_generator
 
 
 class Battle(commands.Cog):
@@ -60,15 +61,22 @@ class Battle(commands.Cog):
         class_selection = await ctx.send(embed=selection)
         await class_selection.add_reaction("🏹")
         await class_selection.add_reaction("⚔")
-        reaction = await self.bot.wait_for("reaction_add", check=check)
+        reaction, user = await self.bot.wait_for("reaction_add", check=lambda r, u: u == ctx.message.author)
         print(reaction)
-        await ctx.send(f"You have chosen: {reaction[0]}")
+        await ctx.send(f"You have chosen: {reaction.emoji}")
+
+        if reaction.emoji == "🏹":
+            _class = "ranger"
+        if reaction.emoji == "⚔":
+            _class = "knight"
+
+        stats = stats_generator.generate_stats(_class)
 
         base = discord.Embed(title="Stats", colour=random.choice(repo.COLOURS))
         base.set_author(name=target.display_name, icon_url=target.avatar_url)
-        base.add_field(name="STR", value=1, inline=True)
-        base.add_field(name="DEF", value=2, inline=True)
-        base.add_field(name="SPD", value=3, inline=True)
+        base.add_field(name="STR", value=stats["_str"], inline=True)
+        base.add_field(name="DEF", value=stats["_def"], inline=True)
+        base.add_field(name="SPD", value=stats["_spd"], inline=True)
         await ctx.send(embed=base)
 
         await ctx.send("Do you wish to register? (y/n)")
