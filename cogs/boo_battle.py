@@ -44,45 +44,38 @@ class Battle(commands.Cog):
 
     @commands.command()
     async def register(self, ctx):
-
-        user_id = ctx.author.id
-        target = self.bot.get_user(user_id)
-
-        def check(reaction, user):
-            return user == ctx.message.author
-
+        target = self.bot.get_user(ctx.author.id)
         user_id = ctx.message.author.id
         guild_id = ctx.message.guild.id
 
-        selection = discord.Embed(title="Please choose your class", colour=random.choice(repo.COLOURS))
-        selection.add_field(name="🏹 Ranger", value="A ranged and agile class\nSTR ★★☆ DEF ★☆☆ SPD ★★★", inline=False)
-        selection.add_field(name="⚔ Knight", value="A melee class boasting heavy defenses\nSTR ★★☆ DEF ★★★ SPD ★☆☆", inline=False)
-        selection.set_footer(text="Your base stats are randomly allocated with weighting depending on the class you have selected")
+        # Generate class selection embed
+        class_dict = stats_generator.emoji_to_class_dict()
+        embed_colour = random.choice(repo.COLOURS)
+        selection = stats_generator.generate_embed(embed_colour)
         class_selection = await ctx.send(embed=selection)
-        await class_selection.add_reaction("🏹")
-        await class_selection.add_reaction("⚔")
+
+        # Generate class options with reactions
+        for class_emoji, class_name in class_dict.items():
+            await class_selection.add_reaction(class_emoji)
         reaction, user = await self.bot.wait_for("reaction_add", check=lambda r, u: u == ctx.message.author)
-        print(reaction)
         await ctx.send(f"You have chosen: {reaction.emoji}")
 
-        if reaction.emoji == "🏹":
-            _class = "ranger"
-        if reaction.emoji == "⚔":
-            _class = "knight"
-
+        # Generate stats
+        _class = class_dict[reaction.emoji]
         stats = stats_generator.generate_stats(_class)
 
-        base = discord.Embed(title="Stats", colour=random.choice(repo.COLOURS))
+        # Embed stats
+        base = discord.Embed(title="Stats", colour=embed_colour)
         base.set_author(name=target.display_name, icon_url=target.avatar_url)
+        base.add_field(name="Class", value=_class.title(), inline=False)
         base.add_field(name="STR", value=stats["_str"], inline=True)
         base.add_field(name="DEF", value=stats["_def"], inline=True)
         base.add_field(name="SPD", value=stats["_spd"], inline=True)
         await ctx.send(embed=base)
 
+        # Registration confirmation
         await ctx.send("Do you wish to register? (y/n)")
         msg = await self.bot.wait_for('message', check=lambda message: message.author == ctx.author)
-        print(msg)
-
         if msg.content == "y":
             await ctx.send("You have been registered!")
         else:

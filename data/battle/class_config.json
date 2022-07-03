@@ -1,10 +1,14 @@
 {
   "ranger": {
+    "emoji": "🏹",
+    "description": "A ranged and agile class",
     "_str": 2,
     "_def": 1,
     "_spd": 3
   },
   "knight": {
+    "emoji": "⚔",
+    "description": "A melee class boasting heavy defenses",
     "_str": 2,
     "_def": 3,
     "_spd": 1
