@@ -58,6 +58,7 @@ class Battle(commands.Cog):
     @commands.command()
     async def battle(self, ctx, target=None):
         guild_id = ctx.message.guild.id
+        guild = self.bot.get_guild(guild_id)
         caller = ctx.author
         if not check_user_exist(guild_id, caller.id):
             await ctx.send("You are not registered! Please register using the ``register`` command")
@@ -70,7 +71,7 @@ class Battle(commands.Cog):
             await ctx.send("You can only fight with another person!")
             return
 
-        target = self.bot.get_user(int(target[2:-1]))
+        target = guild.get_member(int(target[2:-1]))
         if caller == target:
             await ctx.send("You can't fight yourself") # Add some random choices
             return
@@ -101,7 +102,9 @@ class Battle(commands.Cog):
         target_spd = int(target_stats["Speed"])
         target_player = Player(target_name, target_class, target_str, target_def, target_spd)
 
-        while target_player.health > 0 and caller_player.health > 0:
+        winner = None
+        while True:
+
             # Caller attacks first
             if caller_spd > target_spd:
                 fst_attacker = caller_player
@@ -116,14 +119,21 @@ class Battle(commands.Cog):
             await ctx.send(f"**{fst_attacker.name}** dealt **{round(fst_damage, 1)}** damage!")
             await ctx.send(f"**{fst_attacker.name}**'s Health ♡: **{round(fst_attacker.health, 1)}** | **{snd_attacker.name}**'s Health ♡: **{round(snd_attacker.health, 1)}**")
 
+            if snd_attacker.health <= 0:
+                winner = fst_attacker
+                break
+
             snd_damage = snd_attacker.attack(fst_attacker)
             await ctx.send(f"**{snd_attacker.name}** attacks **{fst_attacker.name}**")
             await ctx.send(f"**{snd_attacker.name}** dealt **{round(snd_damage, 1)}** damage!")
             await ctx.send(f"**{fst_attacker.name}**'s Health ♡: **{round(fst_attacker.health, 1)}** | **{snd_attacker.name}**'s Health ♡: **{round(snd_attacker.health, 1)}**")
-        if target_player.health < 0:
-            await ctx.send(f"**{target_player.name}** wins!")
-        else:
-            await ctx.send(f"**{caller_player.name}** wins!")
+
+            if fst_attacker.health <= 0:
+                winner = snd_attacker
+                break
+
+        await ctx.send("**Battle is finished**")
+        await ctx.send(f"**{winner.name}** wins!")
 
 
     @commands.command()
