@@ -25,31 +25,32 @@ class Battle(commands.Cog):
 
     @commands.command()
     async def stats(self, ctx, target=None):
+        guild_id = ctx.message.guild.id
+        user_id = ctx.message.author.id
+
         found = False
         if target is None:
-            target = ctx.message.author.id
+            target = ctx.message.author
 
+        display_stats = {}
         with open("data/stats.csv", mode="r", newline="") as file:
-            reader = csv.reader(file)
-            for line in reader:
-                try:
-                    if line[0] == str(target.id):
-                        found = True
-                        strength = int(line[1])
-                        defense = int(line[2])
-                        speed = int(line[3])
-                        break
-                except:
-                    found = False
+            fieldnames = ["Guild_ID", "User_ID", "Class", "Strength", "Defense","Speed"]
+            reader = csv.DictReader(file, fieldnames=fieldnames)
+            for row in reader:
+                if row["Guild_ID"] == str(guild_id) and row["User_ID"] == str(target.id):
+                    found = True
+                    display_stats = row
+                    break
 
-        if found:
-            embed = discord.Embed(title="Fighter Stats", colour=random.choice(repo.COLOURS))
-            embed.set_author(name=target.display_name, icon_url=target.avatar_url)
-            embed.add_field(name="STR", value=strength, inline=True)
-            embed.add_field(name="DEF", value=defense, inline=True)
-            embed.add_field(name="SPD", value=speed, inline=True)
-
-            await ctx.send(embed=embed)
+        if display_stats:
+            # Embed stats
+            stats = discord.Embed(title="Stats", colour=random.choice(repo.COLOURS))
+            stats.set_author(name=target.display_name, icon_url=target.avatar_url)
+            stats.add_field(name="Class", value=display_stats["Class"].title(), inline=False)
+            stats.add_field(name="STR", value=display_stats["Strength"], inline=True)
+            stats.add_field(name="DEF", value=display_stats["Defense"], inline=True)
+            stats.add_field(name="SPD", value=display_stats["Speed"], inline=True)
+            await ctx.send(embed=stats)
         else:
             await ctx.send(f"User not registered, please register using the ``register`` command")
 
@@ -105,8 +106,9 @@ class Battle(commands.Cog):
             fieldnames = ["Guild_ID", "User_ID", "Class", "Strength", "Defense", "Speed"]
             with open("data/stats.csv", "r") as file:
                 reader = csv.DictReader(file, fieldnames=fieldnames)
+                # Update stats if the user already exists
                 for row in reader:
-                    if str(guild_id) == row["Guild_ID"] and str(user_id) == row["User_ID"]:
+                    if row["Guild_ID"] == str(guild_id) and row["User_ID"] == str(user_id):
                         row = player_stats
                     new_rows.append(row)
 
