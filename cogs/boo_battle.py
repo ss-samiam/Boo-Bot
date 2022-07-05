@@ -28,7 +28,6 @@ class Battle(commands.Cog):
         guild_id = ctx.message.guild.id
         user_id = ctx.message.author.id
 
-        found = False
         if target is None:
             target = ctx.message.author
 
@@ -38,7 +37,6 @@ class Battle(commands.Cog):
             reader = csv.DictReader(file, fieldnames=fieldnames)
             for row in reader:
                 if row["Guild_ID"] == str(guild_id) and row["User_ID"] == str(target.id):
-                    found = True
                     display_stats = row
                     break
 
@@ -46,7 +44,8 @@ class Battle(commands.Cog):
             # Embed stats
             stats = discord.Embed(title="Stats", colour=random.choice(repo.COLOURS))
             stats.set_author(name=target.display_name, icon_url=target.avatar_url)
-            stats.add_field(name="Class", value=display_stats["Class"].title(), inline=False)
+            class_emoji = stats_generator.class_to_emoji_dict()[display_stats["Class"]]
+            stats.add_field(name="Class", value=f"{class_emoji} {display_stats['Class'].title()}", inline=False)
             stats.add_field(name="STR", value=display_stats["Strength"], inline=True)
             stats.add_field(name="DEF", value=display_stats["Defense"], inline=True)
             stats.add_field(name="SPD", value=display_stats["Speed"], inline=True)
@@ -92,7 +91,7 @@ class Battle(commands.Cog):
         # Embed stats
         base = discord.Embed(title="Stats", colour=embed_colour)
         base.set_author(name=target.display_name, icon_url=target.avatar_url)
-        base.add_field(name="Class", value=_class.title(), inline=False)
+        base.add_field(name="Class", value=f"{reaction.emoji} {_class.title()}", inline=False)
         base.add_field(name="STR", value=_str, inline=True)
         base.add_field(name="DEF", value=_def, inline=True)
         base.add_field(name="SPD", value=_spd, inline=True)

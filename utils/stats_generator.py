@@ -34,6 +34,16 @@ def emoji_to_class_dict():
     return result
 
 
+def class_to_emoji_dict():
+    with open("data/battle/class_config.json", "r", encoding="utf-8") as config:
+        config = json.load(config)
+
+    result = {}
+    for _class, details in config.items():
+        result[_class] = details["emoji"]
+    return result
+
+
 def generate_stats(player_class):
     with open("data/battle/class_config.json", "r", encoding="utf-8") as config:
         config = json.load(config)
