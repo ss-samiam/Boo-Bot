@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import csv
 import random
+import json
 
 from utils import repo
 from utils.battle import stats_generator
@@ -9,12 +10,12 @@ from utils.battle import battle_constants
 
 
 def check_user_exist(guild_id, user_id):
-    with open("data/stats.csv", "r") as file:
-        reader = csv.DictReader(file, fieldnames=battle_constants.FIELDNAMES)
-        for row in reader:
-            if str(guild_id) == row["Guild_ID"] and str(user_id) == row["User_ID"]:
-                return True
-        return False
+    with open("data/stats.json", "r", encoding="utf-8") as file:
+        user_details = json.load(file)
+    for entry in user_details:
+        if guild_id == entry["guild_id"] and user_id == entry["user_id"]:
+            return True
+    return False
 
 
 class Player:
@@ -88,13 +89,13 @@ class Battle(commands.Cog):
             await ctx.send(f"{target.display_name} is not registered! Please register using the ``register`` command")
 
         # Load stats of caller and target
-        with open("data/stats.csv", mode="r", newline="") as file:
-            reader = csv.DictReader(file, fieldnames=battle_constants.FIELDNAMES)
-            for row in reader:
-                if str(guild_id) == row["Guild_ID"] and str(caller.id) == row["User_ID"]:
-                    caller_stats = row
-                if str(guild_id) == row["Guild_ID"] and str(target.id) == row["User_ID"]:
-                    target_stats = row
+        with open("data/stats.json", "r", encoding="utf-8") as file:
+            user_details = json.load(file)
+        for entry in user_details:
+            if guild_id == entry["guild_id"] and caller.id == entry["user_id"]:
+                caller_stats = entry["game_stats"]
+            if guild_id == entry["guild_id"] and target.id == entry["user_id"]:
+                target_stats = entry["game_stats"]
 
         caller_name = caller.display_name
         caller_class = caller_stats["Class"]
@@ -112,7 +113,6 @@ class Battle(commands.Cog):
 
         winner = None
         while True:
-
             # Caller attacks first
             if caller_spd > target_spd:
                 fst_attacker = caller_player
@@ -143,7 +143,6 @@ class Battle(commands.Cog):
         await ctx.send("**Battle is finished**")
         await ctx.send(f"**{winner.name}** wins!")
 
-
     @commands.command()
     async def stats(self, ctx, target=None):
         guild_id = ctx.message.guild.id
@@ -153,22 +152,22 @@ class Battle(commands.Cog):
             target = ctx.message.author
 
         display_stats = {}
-        with open("data/stats.csv", mode="r", newline="") as file:
-            reader = csv.DictReader(file, fieldnames=battle_constants.FIELDNAMES)
-            for row in reader:
-                if row["Guild_ID"] == str(guild_id) and row["User_ID"] == str(target.id):
-                    display_stats = row
-                    break
+        with open("data/stats.json", "r", encoding="utf-8") as file:
+            user_details = json.load(file)
+        for entry in user_details:
+            if guild_id == entry["guild_id"] and target.id == entry["user_id"]:
+                display_stats = entry["game_details"]
+                break
 
         if display_stats:
             # Embed stats
             stats = discord.Embed(title="Stats", colour=random.choice(repo.COLOURS))
             stats.set_author(name=target.display_name, icon_url=target.avatar_url)
-            class_emoji = stats_generator.class_to_emoji_dict()[display_stats["Class"]]
-            stats.add_field(name="Class", value=f"{class_emoji} {display_stats['Class'].title()}", inline=False)
-            stats.add_field(name="STR", value=display_stats["Strength"], inline=True)
-            stats.add_field(name="DEF", value=display_stats["Defense"], inline=True)
-            stats.add_field(name="SPD", value=display_stats["Speed"], inline=True)
+            class_emoji = stats_generator.class_to_emoji_dict()[display_stats["class"]]
+            stats.add_field(name="Class", value=f"{class_emoji} {display_stats['class'].title()}", inline=False)
+            stats.add_field(name="STR", value=display_stats["strength"], inline=True)
+            stats.add_field(name="DEF", value=display_stats["defense"], inline=True)
+            stats.add_field(name="SPD", value=display_stats["speed"], inline=True)
             await ctx.send(embed=stats)
         else:
             await ctx.send("User not registered, please register using the ``register`` command")
@@ -206,7 +205,8 @@ class Battle(commands.Cog):
         _str = stats["_str"]
         _def = stats["_def"]
         _spd = stats["_spd"]
-        player_stats = {"Guild_ID": guild_id, "User_ID": user_id, "Class": _class, "Strength": _str, "Defense": _def, "Speed": _spd}
+        player_stats = {"xp": 0, "class": _class, "skills": [], "hp": 100, "strength": _str, "defense": _def, "speed": _spd}
+        player_entry = {"guild_id": guild_id, "user_id": user_id, "game_details": player_stats}
 
         # Embed stats
         base = discord.Embed(title="Stats", colour=embed_colour)
@@ -221,24 +221,22 @@ class Battle(commands.Cog):
         await ctx.send("Do you wish to register? (y/n)")
         msg = await self.bot.wait_for('message', check=lambda message: message.author == ctx.author)
         if msg.content in ["y", "Y"]:
-            new_rows = []
-            with open("data/stats.csv", "r") as file:
-                reader = csv.DictReader(file, fieldnames=battle_constants.FIELDNAMES)
-                # Update stats if the user already exists
-                for row in reader:
-                    if row["Guild_ID"] == str(guild_id) and row["User_ID"] == str(user_id):
-                        row = player_stats
-                    new_rows.append(row)
-
-                # Add to list if user has never registered before
-                if not user_exist:
-                    new_rows.append(player_stats)
-                await ctx.send("You have been registered!")
+            with open("data/stats.json", "r", encoding="utf-8") as file:
+                user_details = json.load(file)
+            # Add to list if user has never registered before
+            if not user_exist:
+                user_details.append(player_entry)
+            # Update stats if the user already exists
+            else:
+                for i in range(len(user_details)):
+                    entry = user_details[i]
+                    if guild_id == entry["guild_id"] and user_id == entry["user_id"]:
+                        user_details[i] = player_entry
+            await ctx.send("You have been registered!")
 
             # Write the updated data to file.
-            with open("data/stats.csv", "w", newline="") as output:
-                writer = csv.DictWriter(output, fieldnames=battle_constants.FIELDNAMES)
-                writer.writerows(new_rows)
+            with open("data/stats.json", "w", encoding="utf-8") as file:
+                json.dump(user_details, file)
         else:
             await ctx.send("Registration has been cancelled.")
 
