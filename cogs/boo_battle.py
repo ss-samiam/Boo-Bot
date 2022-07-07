@@ -1,21 +1,11 @@
 import discord
 from discord.ext import commands
-import csv
 import random
 import json
 
 from utils import repo
 from utils.battle import stats_generator
 from utils.battle import battle_constants
-
-
-def check_user_exist(guild_id, user_id):
-    with open("data/stats.json", "r", encoding="utf-8") as file:
-        user_details = json.load(file)
-    for entry in user_details:
-        if guild_id == entry["guild_id"] and user_id == entry["user_id"]:
-            return True
-    return False
 
 
 class Player:
@@ -69,7 +59,7 @@ class Battle(commands.Cog):
         guild_id = ctx.message.guild.id
         guild = self.bot.get_guild(guild_id)
         caller = ctx.author
-        if not check_user_exist(guild_id, caller.id):
+        if not stats_generator.check_user_exist(guild_id, caller.id):
             await ctx.send("You are not registered! Please register using the ``register`` command")
             return
 
@@ -85,7 +75,7 @@ class Battle(commands.Cog):
             await ctx.send("You can't fight yourself") # Add some random choices
             return
 
-        if not check_user_exist(guild_id, target.id):
+        if not stats_generator.check_user_exist(guild_id, target.id):
             await ctx.send(f"{target.display_name} is not registered! Please register using the ``register`` command")
 
         # Load stats of caller and target
@@ -179,7 +169,7 @@ class Battle(commands.Cog):
         user_id = ctx.message.author.id
 
         # Check if user wants to re-register if they already registered
-        user_exist = check_user_exist(guild_id, user_id)
+        user_exist = stats_generator.check_user_exist(guild_id, user_id)
         if user_exist:
             await ctx.send("You have already registered, do you wish to register again? (y/n)")
             again_msg = await self.bot.wait_for('message', check=lambda message: message.author == ctx.author)

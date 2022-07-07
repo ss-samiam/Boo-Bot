@@ -1,9 +1,17 @@
 import discord
-from discord.ext import commands
 import json
 import random
 
-distribution = {1: [1, 3], 2: [4, 6], 3: [7, 9]}
+from utils.battle import battle_constants
+
+
+def check_user_exist(guild_id, user_id):
+    with open("data/stats.json", "r", encoding="utf-8") as file:
+        user_details = json.load(file)
+    for entry in user_details:
+        if guild_id == entry["guild_id"] and user_id == entry["user_id"]:
+            return True
+    return False
 
 
 def generate_embed(embed_colour):
@@ -58,7 +66,7 @@ def generate_stats(player_class):
 
 
 def distribution_to_stat(rating):
-    bounds = distribution[rating]
+    bounds = battle_constants.BASE_STATS_DISTRIBUTION[rating]
     return random.randint(bounds[0], bounds[1])
 
 
