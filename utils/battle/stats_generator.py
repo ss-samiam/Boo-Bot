@@ -14,6 +14,24 @@ def check_user_exist(guild_id, user_id):
     return False
 
 
+def load_user_stats(guild_id, user_id):
+    with open("data/stats.json", "r", encoding="utf-8") as file:
+        user_details = json.load(file)
+    for entry in user_details:
+        if guild_id == entry["guild_id"] and user_id == entry["user_id"]:
+            return entry["game_details"]
+    return None
+
+
+def random_stats(stat, interval, zero=False):
+    lower_bound = stat - interval
+    if not zero:
+        if lower_bound < 0:
+            lower_bound = 1
+    upper_bound = stat + interval
+    return random.randint(lower_bound, upper_bound)
+
+
 def generate_embed(embed_colour):
     with open("data/battle/class_config.json", "r", encoding="utf-8") as config:
         config = json.load(config)

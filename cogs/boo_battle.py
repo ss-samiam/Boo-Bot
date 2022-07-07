@@ -54,6 +54,34 @@ class Battle(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    @commands.command(aliases=["randombattle", "rb"])
+    async def random_battle(self, ctx, target=None):
+        guild_id = ctx.message.guild.id
+        user_id = ctx.message.author.id
+        target = self.bot.get_user(ctx.author.id)
+
+        player_stats = stats_generator.load_user_stats(guild_id, user_id)
+        if player_stats is None:
+            await ctx.send("You are not registered! Please register using the ``register`` command")
+            return
+
+        # Generate enemy based on player's current stats
+        ai_str = stats_generator.random_stats(player_stats["strength"], 10)  # Improve random stat generator
+        ai_def = stats_generator.random_stats(player_stats["defense"], 10)
+        ai_spd = stats_generator.random_stats(player_stats["speed"], 10)
+        ai_hp = 100
+        ai_class = random.choice(battle_constants.CLASS_NAMES)
+
+        # Embed stats
+        stats = discord.Embed(title="Enemy Stats", colour=random.choice(repo.COLOURS))
+        class_emoji = stats_generator.class_to_emoji_dict()[ai_class]
+        stats.add_field(name="Class", value=f"{class_emoji} {ai_class.title()}", inline=False)
+        stats.add_field(name="STR", value=ai_str, inline=True)
+        stats.add_field(name="DEF", value=ai_def, inline=True)
+        stats.add_field(name="SPD", value=ai_spd, inline=True)
+        await ctx.send(embed=stats)
+
+
     @commands.command()
     async def battle(self, ctx, target=None):
         guild_id = ctx.message.guild.id
