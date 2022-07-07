@@ -1,18 +1,16 @@
 import discord
 from discord.ext import commands
-import json
 import csv
 import random
 
 from utils import repo
-from utils import stats_generator
-
-fieldnames = ["Guild_ID", "User_ID", "Class", "Strength", "Defense", "Speed"]
+from utils.battle import stats_generator
+from utils.battle import battle_constants
 
 
 def check_user_exist(guild_id, user_id):
     with open("data/stats.csv", "r") as file:
-        reader = csv.DictReader(file, fieldnames=fieldnames)
+        reader = csv.DictReader(file, fieldnames=battle_constants.FIELDNAMES)
         for row in reader:
             if str(guild_id) == row["Guild_ID"] and str(user_id) == row["User_ID"]:
                 return True
@@ -20,12 +18,16 @@ def check_user_exist(guild_id, user_id):
 
 
 class Player:
-    def __init__(self, name, _class, _str, _def, _spd):
+    def __init__(self, name, stats):
         self.name = name
         self.health = 10
-        self._str = _str
-        self._def = _def
-        self._spd = _spd
+        self._str = stats["Strength"]
+        self._def = stats["Defense"]
+        self._spd = stats["Speed"]
+        self.xp = stats["XP"]
+        self.skills = stats["Skills"]
+        # xp = (level/x)^y
+        # level = (xp**(1/y)) * x
 
     def get_name(self):
         return self.name
@@ -41,6 +43,12 @@ class Player:
 
     def get_spd(self):
         return self._str
+
+    def get_xp(self):
+        return self.xp
+
+    def get_level(self):
+        return int(((self.xp**(1/battle_constants.XP_Y)) * battle_constants.XP_X) // 1)
 
     def take_dmg(self, damage):
         self.health = self.health - damage
@@ -81,7 +89,7 @@ class Battle(commands.Cog):
 
         # Load stats of caller and target
         with open("data/stats.csv", mode="r", newline="") as file:
-            reader = csv.DictReader(file, fieldnames=fieldnames)
+            reader = csv.DictReader(file, fieldnames=battle_constants.FIELDNAMES)
             for row in reader:
                 if str(guild_id) == row["Guild_ID"] and str(caller.id) == row["User_ID"]:
                     caller_stats = row
@@ -93,14 +101,14 @@ class Battle(commands.Cog):
         caller_str = int(caller_stats["Strength"])
         caller_def = int(caller_stats["Defense"])
         caller_spd = int(caller_stats["Speed"])
-        caller_player = Player(caller_name, caller_class, caller_str, caller_def, caller_spd)
+        caller_player = Player(caller_name, caller_stats)
 
         target_name = target.display_name
         target_class = target_stats["Class"]
         target_str = int(target_stats["Strength"])
         target_def = int(target_stats["Defense"])
         target_spd = int(target_stats["Speed"])
-        target_player = Player(target_name, target_class, target_str, target_def, target_spd)
+        target_player = Player(target_name, target_stats)
 
         winner = None
         while True:
@@ -146,7 +154,7 @@ class Battle(commands.Cog):
 
         display_stats = {}
         with open("data/stats.csv", mode="r", newline="") as file:
-            reader = csv.DictReader(file, fieldnames=fieldnames)
+            reader = csv.DictReader(file, fieldnames=battle_constants.FIELDNAMES)
             for row in reader:
                 if row["Guild_ID"] == str(guild_id) and row["User_ID"] == str(target.id):
                     display_stats = row
@@ -215,7 +223,7 @@ class Battle(commands.Cog):
         if msg.content in ["y", "Y"]:
             new_rows = []
             with open("data/stats.csv", "r") as file:
-                reader = csv.DictReader(file, fieldnames=fieldnames)
+                reader = csv.DictReader(file, fieldnames=battle_constants.FIELDNAMES)
                 # Update stats if the user already exists
                 for row in reader:
                     if row["Guild_ID"] == str(guild_id) and row["User_ID"] == str(user_id):
@@ -229,7 +237,7 @@ class Battle(commands.Cog):
 
             # Write the updated data to file.
             with open("data/stats.csv", "w", newline="") as output:
-                writer = csv.DictWriter(output, fieldnames=fieldnames)
+                writer = csv.DictWriter(output, fieldnames=battle_constants.FIELDNAMES)
                 writer.writerows(new_rows)
         else:
             await ctx.send("Registration has been cancelled.")
